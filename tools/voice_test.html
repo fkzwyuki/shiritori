@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>こえの テスト（しりとり）</title>
+<link rel="icon" href="data:,">   <!-- favicon を探しに行って 404 が出るのを防ぐ -->
+
+<!-- 声の入力の実験ページ（おとな向け・本体とは別）。DESIGN.md §4.2・§5.3・§7.2 -->
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 12px 14px 60px; background: #f4f6f8; color: #223; font: 16px/1.5 "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif; }
+  h1 { font-size: 20px; margin: 4px 0 2px; }
+  h2 { font-size: 17px; margin: 22px 0 8px; border-left: 5px solid #4a90d9; padding-left: 8px; }
+  .lead { font-size: 13px; color: #556; margin: 0 0 8px; }
+  .box { background: #fff; border: 1px solid #d5dbe2; border-radius: 10px; padding: 10px 12px; }
+  .env { font-size: 12px; color: #445; word-break: break-all; }
+  .env b { color: #223; }
+  .warn { color: #b3261e; font-weight: bold; }
+  .ok { color: #1b7a3a; font-weight: bold; }
+  button { font: inherit; min-height: 52px; padding: 8px 16px; border-radius: 10px; border: 2px solid #4a90d9; background: #fff; color: #1d5fa8; cursor: pointer; touch-action: manipulation; }
+  button:active { background: #e3f0fc; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.main { width: 100%; min-height: 72px; font-size: 21px; font-weight: bold; background: #4a90d9; color: #fff; border-color: #2f74bd; }
+  button.main.listening { background: #d9534f; border-color: #b23a36; animation: pulse 1s infinite; }
+  button.small { min-height: 44px; font-size: 15px; padding: 6px 12px; }
+  @keyframes pulse { 50% { opacity: .7; } }
+  .status { margin-top: 8px; font-size: 18px; font-weight: bold; min-height: 28px; }
+  .status.err { color: #b3261e; }
+  .status.live { color: #d9534f; }
+  #evlog { margin-top: 8px; height: 140px; overflow-y: auto; background: #101820; color: #cfe3f5; font: 12px/1.5 Consolas, monospace; padding: 6px 8px; border-radius: 8px; white-space: pre-wrap; }
+  #evlog .e { color: #ff8f8a; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch; margin-top: 8px; }
+  #manual { flex: 1 1 200px; min-height: 52px; font-size: 20px; padding: 6px 10px; border: 2px solid #b8c2cc; border-radius: 10px; min-width: 0; }
+  .examples button { min-height: 48px; }
+  .hint { font-size: 12px; color: #667; margin-top: 4px; }
+  /* 結果 */
+  .adopt { border: 3px solid #1b9e4b; background: #eafaf0; border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; }
+  .adopt.none { border-color: #d98a2b; background: #fff5e6; }
+  .adopt .big { font-size: 26px; font-weight: bold; }
+  .adopt .sub { font-size: 14px; color: #445; }
+  .cand { background: #fff; border: 2px solid #d5dbe2; border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; }
+  .cand.adopted { border-color: #1b9e4b; box-shadow: 0 0 0 3px #b9ecd0; }
+  .cand .head { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: #556; }
+  .cand .raw { font-size: 24px; font-weight: bold; margin: 2px 0 4px; word-break: break-all; }
+  .tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 10px; color: #fff; background: #888; }
+  .tag.adopted { background: #1b9e4b; font-size: 14px; }
+  .tag.dict { background: #2f74bd; }
+  .tag.kana { background: #8a63c9; }
+  .tag.none { background: #c0392b; }
+  dl.kv { display: grid; grid-template-columns: 9.5em 1fr; gap: 2px 8px; margin: 0; font-size: 15px; }
+  dl.kv dt { color: #667; }
+  dl.kv dd { margin: 0; word-break: break-all; }
+  .nextc { font-size: 22px; font-weight: bold; }
+  .nextc.n { color: #b3261e; font-size: 17px; }
+  .hist { font-size: 13px; }
+  .hist .h { border-bottom: 1px solid #e3e7eb; padding: 6px 0; word-break: break-all; }
+  @media (max-width: 420px) { dl.kv { grid-template-columns: 7.5em 1fr; font-size: 14px; } }
+</style>
+</head>
+<body>
+
+<h1>こえの テスト（しりとり）</h1>
+<p class="lead">おとな向けの試験ページ。マイクで言った言葉が「どう聞こえて」「どんな読みになり」「次の文字は何になるか」を見ます。</p>
+
+<div class="box env" id="env"></div>
+
+<h2>1. マイクで ためす</h2>
+<div class="box">
+  <button type="button" class="main" id="btn-mic">マイクを おして はなす</button>
+  <div class="status" id="status">まだ 聞いていません</div>
+  <div id="evlog" aria-label="イベントの記録"></div>
+  <div class="hint">押してから1回だけ聞き取ります。終わったら自動で止まります（途中で止めたいときは、もう一度押す）。</div>
+</div>
+
+<h2>2. 手で打って ためす（マイクが使えないとき）</h2>
+<div class="box">
+  <div class="row">
+    <input type="text" id="manual" placeholder="例: 林檎" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button type="button" id="btn-manual">変換する</button>
+  </div>
+  <div class="hint">「/」で区切ると、認識結果の候補が複数あった場合の試験ができます（例: 会場/がっこう）。先に書いたものが「先に返ってきた候補」、信頼度は「なし」扱い。</div>
+  <div class="row examples" id="examples"></div>
+</div>
+
+<h2>3. 結果</h2>
+<div id="result"><div class="box hint">まだ結果がありません。マイクか手入力で試してください。</div></div>
+
+<h2>4. 記録</h2>
+<div class="box">
+  <div class="row" style="margin-top:0">
+    <button type="button" class="small" id="btn-copy">記録を コピー</button>
+    <button type="button" class="small" id="btn-clear">記録を 消す</button>
+    <span id="copy-msg" class="hint" style="align-self:center"></span>
+  </div>
+  <div class="hist" id="hist"></div>
+</div>
+
+<!-- 言葉のデータ（辞書引き用）と かな処理・読みの変換。本体と同じものを使う。file:// でも動くよう <script src> だけを使う -->
+<script src="../build/words.js"></script>
+<script src="../src/kana.js"></script>
+<script src="../src/reading.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ---- 試験ページの数字（本体の config.js とは別。ここだけで使う） ----
+  var MAX_ALTERNATIVES = 5;        // 音声認識に返してもらう候補の数
+  var RECOG_LANG = 'ja-JP';        // 聞き取りの言語
+  var HISTORY_MAX = 30;            // 記録に残す件数
+  var EVLOG_MAX = 80;              // イベントの記録に残す行数
+
+  var $ = function (id) { return document.getElementById(id); };
+  var SR = window.SR;
+  var history = [];                // 記録（新しいものが先頭）
+
+  // ---------------- 表示の部品 ----------------
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  // 次の文字の表示: 「だ（た）」「ぱ（は・あ）」「ん で おわり」
+  function nextText(r) {
+    if (!r.ok || !r.next) return '（なし）';
+    if (r.next.endsWithN) return 'ん で おわり（ん が ついちゃった！）';
+    var c = r.next.chars;
+    return c[0] + (c.length > 1 ? '（' + c.slice(1).join('・') + '）' : '');
+  }
+
+  function sourceText(r) {
+    if (r.source === 'dict') return '辞書にあった（' + r.word.reading + '）';
+    if (r.source === 'kana') return 'かなだけなので そのまま読めた';
+    return '読めない';
+  }
+  function sourceLabel(r) {
+    return r.source === 'dict' ? '辞書' : r.source === 'kana' ? 'かな' : '読めない';
+  }
+
+  // ---------------- 結果の表示 ----------------
+  function showResult(origin, picked) {
+    var box = $('result');
+    box.textContent = '';
+    var ad = picked.adopted >= 0 ? picked.results[picked.adopted] : null;
+
+    var a = el('div', 'adopt' + (ad ? '' : ' none'));
+    if (ad) {
+      a.appendChild(el('div', 'sub', origin + ' → 採用する言葉（辞書にあるもの優先、次に信頼度）'));
+      a.appendChild(el('div', 'big', ad.reading + '　→　次の文字: ' + nextText(ad)));
+      a.appendChild(el('div', 'sub', '元の認識結果「' + ad.raw + '」（候補' + (ad.index + 1) + '・' + sourceLabel(ad) + '）'));
+    } else {
+      a.appendChild(el('div', 'sub', origin));
+      a.appendChild(el('div', 'big', '読める候補がありません'));
+      a.appendChild(el('div', 'sub', '本体では ここで「さいごの もじは？」の五十音表を出す想定（DESIGN §4.2）'));
+    }
+    box.appendChild(a);
+
+    picked.results.forEach(function (r, k) {
+      var c = el('div', 'cand' + (k === picked.adopted ? ' adopted' : ''));
+      var head = el('div', 'head');
+      head.appendChild(el('span', '', '候補 ' + (k + 1) + '　信頼度 ' + (typeof r.confidence === 'number' ? r.confidence.toFixed(3) : 'なし')));
+      var tags = el('span');
+      if (k === picked.adopted) { var t0 = el('span', 'tag adopted', '採用'); tags.appendChild(t0); tags.appendChild(document.createTextNode(' ')); }
+      tags.appendChild(el('span', 'tag ' + r.source, sourceLabel(r)));
+      head.appendChild(tags);
+      c.appendChild(head);
+      c.appendChild(el('div', 'raw', r.raw === '' ? '（空）' : r.raw));
+
+      var dl = el('dl', 'kv');
+      function row(k2, v, cls) {
+        dl.appendChild(el('dt', '', k2));
+        var dd = el('dd');
+        dd.appendChild(el('span', cls || '', v));
+        dl.appendChild(dd);
+      }
+      row('ゆらぎを取ったあと', r.normalized === '' ? '（空）' : r.normalized);
+      row('読み（ひらがな）', r.ok ? r.reading : '読めない', r.ok ? 'nextc' : '');
+      row('読みの出どころ', sourceText(r));
+      row('次の文字', nextText(r), r.ok && r.next && r.next.endsWithN ? 'nextc n' : 'nextc');
+      var memo = r.removed.concat(r.notes);
+      if (memo.length) row('やったこと', memo.join(' / '));
+      c.appendChild(dl);
+      box.appendChild(c);
+    });
+  }
+
+  // ---------------- 記録 ----------------
+  function summarize(origin, picked) {
+    var lines = [origin];
+    picked.results.forEach(function (r, k) {
+      lines.push('  ' + (k === picked.adopted ? '★' : ' ') + (k + 1) + ' 「' + r.raw + '」 信頼度=' +
+        (typeof r.confidence === 'number' ? r.confidence.toFixed(3) : 'なし') +
+        ' 取ったあと=「' + r.normalized + '」 読み=' + (r.ok ? r.reading : '読めない') +
+        ' 出どころ=' + sourceLabel(r) + ' 次=' + nextText(r));
+    });
+    lines.push('  → ' + (picked.adopted >= 0
+      ? '採用: ' + picked.results[picked.adopted].reading + ' / 次の文字 ' + nextText(picked.results[picked.adopted])
+      : '採用なし（五十音表へ）'));
+    return lines.join('\n');
+  }
+
+  function addHistory(origin, picked) {
+    var d = new Date();
+    var stamp = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2);
+    history.unshift(stamp + ' ' + summarize(origin, picked));
+    if (history.length > HISTORY_MAX) history.pop();
+    renderHistory();
+  }
+
+  function renderHistory() {
+    var h = $('hist');
+    h.textContent = '';
+    if (!history.length) { h.appendChild(el('div', 'hint', 'まだありません')); return; }
+    history.forEach(function (t) {
+      var d = el('div', 'h');
+      t.split('\n').forEach(function (line, i) {
+        if (i) d.appendChild(document.createElement('br'));
+        d.appendChild(document.createTextNode(line));
+      });
+      h.appendChild(d);
+    });
+  }
+
+  function copyText(text, done) {
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      done(ok);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+    } else fallback();
+  }
+
+  // ---------------- 変換の実行（マイクも手入力もここを通る） ----------------
+  function process(origin, candidates) {
+    var picked = SR.reading.pick(candidates);
+    showResult(origin, picked);
+    addHistory(origin, picked);
+  }
+
+  // ---------------- 手入力 ----------------
+  function runManual(text) {
+    // 「/」「／」「改行」で候補を分ける
+    var parts = String(text).split(/[\/／\n]/);
+    var cands = [];
+    parts.forEach(function (p) { if (p.trim() !== '') cands.push({ transcript: p, confidence: null }); });
+    if (!cands.length) return;
+    process('手入力', cands);
+  }
+
+  $('btn-manual').addEventListener('click', function () { runManual($('manual').value); });
+  $('manual').addEventListener('keydown', function (e) { if (e.key === 'Enter') runManual($('manual').value); });
+
+  // 例のボタン
+  [
+    ['林檎', '林檎'], ['りんごー！', 'りんごー！'], ['ガッコウ', 'ガッコウ'], ['電車', '電車'], ['パンダです', 'パンダです'],
+    ['ぱんだだよ！', 'ぱんだだよ！'], ['らっぱーーー', 'らっぱーーー'], ['みかん', 'みかん'], ['鰻（辞書にない漢字）', '鰻'],
+    ['複数候補', '会場/がっこう/ガッコウ']
+  ].forEach(function (p) {
+    var b = el('button', '', p[0]);
+    b.type = 'button';
+    b.addEventListener('click', function () { $('manual').value = p[1]; runManual(p[1]); });
+    $('examples').appendChild(b);
+  });
+
+  // ---------------- 環境の表示 ----------------
+  var RecogClass = window.SpeechRecognition || window.webkitSpeechRecognition;
+  (function showEnv() {
+    var e = $('env');
+    function line(label, value, cls) {
+      var d = el('div');
+      d.appendChild(el('b', '', label + ': '));
+      d.appendChild(el('span', cls || '', value));
+      e.appendChild(d);
+    }
+    line('ブラウザ', navigator.userAgent);
+    line('開いている場所', location.protocol + '//' + location.host,
+      window.isSecureContext ? 'ok' : 'warn');
+    line('マイクが使える場所（https / localhost）', window.isSecureContext ? 'はい' : 'いいえ（マイクは使えません）', window.isSecureContext ? 'ok' : 'warn');
+    line('音声認識（SpeechRecognition）', RecogClass ? 'あり' : 'なし', RecogClass ? 'ok' : 'warn');
+    line('読み上げ（speechSynthesis）', window.speechSynthesis ? 'あり' : 'なし');
+    line('辞書の言葉の数', String((window.SR_WORDS || []).length) + '語');
+  })();
+
+  // ---------------- マイク ----------------
+  var micBtn = $('btn-mic');
+  var statusEl = $('status');
+  var evlog = $('evlog');
+  var rec = null;           // 今動いている認識
+  var t0 = 0;               // 聞き始めた時刻（ミリ秒）
+  var gotResult = false;    // 今回の聞き取りで結果が返ったか
+  var gotError = '';        // 今回の聞き取りで出たエラー
+
+  function setStatus(text, cls) {
+    statusEl.textContent = text;
+    statusEl.className = 'status' + (cls ? ' ' + cls : '');
+  }
+
+  function logEv(text, isErr) {
+    var ms = t0 ? ((Date.now() - t0) / 1000).toFixed(2) + 's ' : '';
+    var line = el('div', isErr ? 'e' : '', ms + text);
+    evlog.appendChild(line);
+    while (evlog.childNodes.length > EVLOG_MAX) evlog.removeChild(evlog.firstChild);
+    evlog.scrollTop = evlog.scrollHeight;
+  }
+
+  var ERROR_TEXT = {
+    'not-allowed': 'マイクの許可がありません（ブラウザの許可を「はい」に。http で開いている場合も出ます）',
+    'service-not-allowed': '音声認識のサービスが許可されていません（端末の設定を確認）',
+    'no-speech': '声が聞こえませんでした（もっと近くで、押してすぐ話す）',
+    'network': 'ネットワークのエラー（音声認識はネット接続が必要）',
+    'audio-capture': 'マイクが見つからない、または他で使われています',
+    'aborted': '聞き取りが中止されました',
+    'language-not-supported': '日本語（ja-JP）に対応していません',
+    'bad-grammar': '文法の指定のエラー'
+  };
+
+  if (!RecogClass) {
+    micBtn.disabled = true;
+    setStatus('このブラウザは こえに たいおうしていません', 'err');
+    logEv('SpeechRecognition / webkitSpeechRecognition がありません', true);
+  }
+
+  function setListening(on) {
+    micBtn.classList.toggle('listening', on);
+    micBtn.textContent = on ? '聞いています…（もう一度 おすと とめる）' : 'マイクを おして はなす';
+  }
+
+  function startListening() {
+    if (!RecogClass) return;
+    gotResult = false; gotError = '';
+    t0 = Date.now();
+    try {
+      rec = new RecogClass();
+    } catch (err) {
+      setStatus('マイクを 始められません: ' + err, 'err');
+      logEv('new SpeechRecognition で例外: ' + err, true);
+      return;
+    }
+    rec.lang = RECOG_LANG;
+    rec.maxAlternatives = MAX_ALTERNATIVES;
+    rec.interimResults = false;
+    rec.continuous = false;
+
+    rec.onstart = function () { logEv('start（聞き取り開始）'); setStatus('聞いています。はなしてください', 'live'); };
+    rec.onaudiostart = function () { logEv('audiostart（マイクから音が入り始めた）'); };
+    rec.onsoundstart = function () { logEv('soundstart（何か音を検出）'); };
+    rec.onspeechstart = function () { logEv('speechstart（話し声を検出）'); };
+    rec.onspeechend = function () { logEv('speechend（話し声が終わった）'); };
+    rec.onsoundend = function () { logEv('soundend'); };
+    rec.onaudioend = function () { logEv('audioend'); };
+    rec.onnomatch = function () { logEv('nomatch（候補なし）', true); };
+    rec.onerror = function (e) {
+      gotError = e.error || 'unknown';
+      logEv('error: ' + gotError + (e.message ? '（' + e.message + '）' : ''), true);
+      setStatus('エラー: ' + gotError + ' — ' + (ERROR_TEXT[gotError] || '不明なエラー'), 'err');
+    };
+    rec.onresult = function (e) {
+      // continuous=false なので、返ってくるのは1つの結果。その中の候補を全部取る
+      var cands = [];
+      for (var i = e.resultIndex; i < e.results.length; i++) {
+        var res = e.results[i];
+        if (!res.isFinal) continue;
+        for (var k = 0; k < res.length; k++) {
+          cands.push({ transcript: res[k].transcript, confidence: res[k].confidence });
+        }
+        break;   // 最初の確定した結果だけ使う
+      }
+      logEv('result: ' + cands.length + '件 → ' + cands.map(function (c) { return '「' + c.transcript + '」'; }).join(' '));
+      if (!cands.length) return;
+      gotResult = true;
+      setStatus('聞き取れました', '');
+      process('マイク', cands);
+    };
+    rec.onend = function () {
+      logEv('end（聞き取り終了）');
+      setListening(false);
+      if (!gotResult && !gotError) setStatus('何も返ってきませんでした（もう一度）', 'err');
+      else if (!gotResult && gotError) { /* エラーの表示をそのまま残す */ }
+      rec = null;
+    };
+
+    setListening(true);
+    setStatus('準備中…（許可を聞かれたら「はい」）', 'live');
+    try {
+      rec.start();
+    } catch (err) {
+      setListening(false);
+      setStatus('マイクを 始められません: ' + err, 'err');
+      logEv('start() で例外: ' + err, true);
+      rec = null;
+    }
+  }
+
+  micBtn.addEventListener('click', function () {
+    if (rec) {
+      logEv('（手で止めた）');
+      try { rec.stop(); } catch (e) { logEv('stop() で例外: ' + e, true); }
+    } else {
+      startListening();
+    }
+  });
+
+  // ---------------- 記録のボタン ----------------
+  $('btn-copy').addEventListener('click', function () {
+    var head = '[voice_test] ' + navigator.userAgent + '\n';
+    copyText(head + history.slice().reverse().join('\n\n'), function (ok) {
+      $('copy-msg').textContent = ok ? 'コピーしました' : 'コピーできませんでした';
+    });
+  });
+  $('btn-clear').addEventListener('click', function () {
+    history = []; renderHistory(); $('copy-msg').textContent = '';
+  });
+
+  renderHistory();
+})();
+</script>
+</body>
+</html>

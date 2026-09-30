@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>しりとり</title>
+<meta name="theme-color" content="#e9f3fb">
+<!-- ホーム画面に追加したとき、アプリのように全画面で開く（manifest.webmanifest）。iPad/iPhone 用の指定も付ける -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="しりとり">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script>
+  // manifest は http(s) で開いたときだけ読ませる（file:// だと読み込みがエラーになるため。file:// でもゲームは普通に動く）
+  if (/^https?:$/.test(location.protocol)) {
+    var mf = document.createElement('link');
+    mf.rel = 'manifest';
+    mf.href = 'manifest.webmanifest';
+    document.head.appendChild(mf);
+  }
+</script>
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+<!-- 基準 1024x768 のステージ。ブラウザの大きさに合わせて JS が拡大・縮小する -->
+<div id="stage">
+
+  <!-- ============ スタート画面（DESIGN.md §3.5） ============ -->
+  <section class="screen center" id="screen-start">
+    <div class="in">
+      <div class="title">しりとり</div>
+      <div class="sub">こども と おとな で あそぼう</div>
+      <!-- 名前（ひらがな）。空なら「こども」「おとな」。覚えておく（localStorage） -->
+      <div class="names">
+        <label class="nameb kid"><span class="lab">こどもの なまえ</span><input type="text" id="name-in-kid" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="こども"></label>
+        <label class="nameb adult"><span class="lab">おとなの なまえ</span><input type="text" id="name-in-adult" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="おとな"></label>
+      </div>
+      <button type="button" class="bigbtn" id="btn-start">はじめる</button>
+      <div class="settings">
+        <button type="button" id="set-hint"></button>
+        <button type="button" id="set-adult"></button>
+        <button type="button" id="set-speech"></button>
+        <button type="button" id="set-music"></button>
+      </div>
+      <div class="settings-note">せっていは おして かえられます</div>
+    </div>
+    <div class="credit">効果音：魔王魂</div>
+  </section>
+
+  <!-- ============ ゲーム画面（DESIGN.md §3.1） ============ -->
+  <section class="screen game" id="screen-game" hidden>
+    <!-- 上: 2人の名前の板。番の人の板が大きく濃い色になり、画面全体の地の色も番の人の色になる。
+         点数（正解の数）は名前とは別の枠で、板の下の外がわ（こども＝左、おとな＝右）に大きな数字で出す -->
+    <div class="players" id="players">
+      <div class="pl kid" id="pl-kid">
+        <div class="board"><span class="nm" id="name-kid"></span></div>
+        <div class="prow">
+          <div class="pscore" id="pscore-kid"><span class="n" id="num-kid">0</span><span class="marks" id="marks-kid"></span></div>
+          <div class="tag">の ばん！</div>
+        </div>
+      </div>
+      <div class="pl adult" id="pl-adult">
+        <div class="board"><span class="nm" id="name-adult"></span></div>
+        <div class="prow">
+          <div class="tag">の ばん！</div>
+          <div class="pscore" id="pscore-adult"><span class="n" id="num-adult">0</span><span class="marks" id="marks-adult"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 中央上: まえのことば → 今の文字 -->
+    <div class="prev">
+      <span class="lbl">まえのことば</span>
+      <span class="w" id="prev-word"></span>
+      <span class="arrow">→</span>
+      <span class="head" id="head-char"></span>
+    </div>
+
+    <!-- 中央: ヒントの絵の枠 -->
+    <div class="hints" id="hints"></div>
+
+    <!-- 右: 3ボタン -->
+    <div class="side">
+      <button type="button" class="btn" id="btn-hint">ひんと</button>
+      <button type="button" class="btn" id="btn-change">かえる</button>
+      <!-- よみあげの オン／オフ（スタート画面の「よみあげ」と同じ設定。効果音は止めない） -->
+      <button type="button" class="btn speak" id="btn-speech"></button>
+      <button type="button" class="btn stop" id="btn-quit">やめる</button>
+    </div>
+
+    <!-- 下: ほかのことば（マイク）。○・✕ボタンは無し（違ったら親が口で言う） -->
+    <div class="mic-row">
+      <div></div>
+      <!-- 絵にない言葉を答えるとき。マイクが使えない端末では五十音表になる（v0.5.1 で ○ボタンは廃止） -->
+      <button type="button" class="mic" id="btn-mic">🎤 ほかの ことば</button>
+      <!-- 声を使わず、すぐキーボードで言葉を打つ（v0.5.3、ユーザー要望） -->
+      <button type="button" class="typebtn" id="btn-type">✏️ にゅうりょく する</button>
+    </div>
+
+    <!-- しりとり れっしゃ（DESIGN §6.3-1）: 左に機関車、正解のたびに車両が右からつながる。古い車両は左へ流れて見えなくなる -->
+    <div class="train" id="train">
+      <div class="t-engine" id="t-engine"></div>
+      <div class="t-view" id="t-view"><div class="t-cars" id="t-cars"></div></div>
+    </div>
+
+    <!-- 案内役のねこ（DESIGN §6.3-2）。ポーズは cat.js が data-pose と中身を切り替える。絵が無いときは 🐱 -->
+    <div class="cat" id="cat" data-pose="normal" aria-hidden="true"></div>
+
+    <!-- ここから下は、ゲーム画面の上にかぶせて出すもの（普段は hidden） -->
+    <!-- 小さなお知らせ（「もう ないよ」など） -->
+    <div class="toast" id="toast" hidden></div>
+
+    <!-- 星が点数の枠へ飛んでいく層（正解の演出のあいだだけ使う） -->
+    <div class="fly" id="fly"></div>
+
+    <!-- 正解の演出（DESIGN.md §3.2） -->
+    <div class="overlay" id="ov-correct" hidden>
+      <div class="confetti" id="confetti"></div>
+      <div class="ov-in" id="ov-correct-in">
+        <div class="big">せいかい！</div>
+        <div class="ovpic" id="ov-pic" hidden></div>
+        <div class="word" id="ov-word"></div>
+        <div class="plus" id="ov-plus"></div>
+        <div class="heartline" id="ov-heart" hidden>♥ が ひとつ できた！</div>
+      </div>
+    </div>
+
+    <!-- はずれ・やり直し（DESIGN.md §3.3） -->
+    <div class="overlay" id="ov-miss" hidden>
+      <div class="ov-in warn">
+        <div class="big" id="miss-big"></div>
+        <div class="word" id="miss-sub"></div>
+      </div>
+    </div>
+    <!-- 「ん」のおばけ（DESIGN §6.3-4）: 下から出て、変な顔をして、手をふって消える。絵が無いときは 👻。
+         白い背景の絵を地の色になじませる（multiply）ため、やり直しの表示（ov-miss）の外に置いて、その上に重ねる -->
+    <div class="ghost" id="ghost" hidden aria-hidden="true"></div>
+
+    <!-- 「なんて いった？」（DESIGN.md §4.2）。聞き取り中／聞き取れなかった／これで いい？ の3つの見た目を1つで切り替える -->
+    <div class="overlay listen-ov" id="ov-listen" hidden>
+      <div class="ov-in">
+        <div class="ask" id="listen-ask">なんて いった？</div>
+        <div class="listen-mid">
+          <button type="button" class="mic listening" id="listen-mic">🎤 きいてるよ</button>
+          <!-- 聞こえた言葉の候補（最大3つ）。親が押して選ぶ -->
+          <div class="cands" id="listen-cands" hidden></div>
+        </div>
+        <div class="heard" id="listen-heard"></div>
+        <div class="listen-msg" id="listen-msg"></div>
+        <button type="button" class="btn none" id="listen-none" hidden>どれでもない</button>
+        <div class="kana-tools">
+          <button type="button" class="tool" id="listen-back">もどる</button>
+          <button type="button" class="tool" id="listen-kana">もじで えらぶ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 言葉を全部打つキーボード（DESIGN.md §6.2-10。声が使えないとき・「もじで えらぶ」のとき） -->
+    <div class="overlay kana-ov" id="ov-kana" hidden>
+      <div class="ov-in">
+        <div class="ask" id="kana-ask">なんて いった？ もじで いれてね</div>
+        <!-- 打った言葉を大きく出す欄。空のときは薄い案内 -->
+        <div class="kana-word" id="kana-word"><span class="kw-text" id="kana-word-text"></span><span class="kw-caret"></span><span class="kw-ph">ここに でるよ</span></div>
+        <div class="kana" id="kana-grid"></div>
+        <!-- 濁点・半濁点、小さい文字、のばす「ー」、1文字けす -->
+        <div class="kana-extra" id="kana-extra">
+          <button type="button" class="kcell fn" id="kana-daku"><b>゛</b><small>てんてん</small></button>
+          <button type="button" class="kcell fn" id="kana-handaku"><b>゜</b><small>まる</small></button>
+          <button type="button" class="kcell" data-ch="ゃ">ゃ</button>
+          <button type="button" class="kcell" data-ch="ゅ">ゅ</button>
+          <button type="button" class="kcell" data-ch="ょ">ょ</button>
+          <button type="button" class="kcell" data-ch="っ">っ</button>
+          <button type="button" class="kcell" data-ch="ー">ー</button>
+          <button type="button" class="kcell fn del" id="kana-del">けす</button>
+        </div>
+        <div class="kana-tools">
+          <button type="button" class="tool back" id="kana-back">もどる</button>
+          <button type="button" class="tool go" id="kana-go" disabled>これで けってい</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 「やめる」の確認（DESIGN.md §3.4） -->
+    <div class="confirm" id="ov-quit" hidden>
+      <div class="box">
+        <div class="q">ほんとうに やめる？</div>
+        <div class="row">
+          <button type="button" class="btn no" id="quit-no">まだ あそぶ</button>
+          <button type="button" class="btn" id="quit-yes">やめる</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 結果画面（DESIGN.md §3.4） ============ -->
+  <section class="screen center" id="screen-result" hidden>
+    <div class="confetti" id="result-confetti"></div>
+    <div class="in">
+      <div class="winner" id="winner"></div>
+      <div class="result">
+        <div class="rcard" id="rcard-kid"><div class="who" id="rname-kid">こども</div><div class="num" id="rnum-kid"></div><div class="marks" id="rmarks-kid"></div></div>
+        <div class="rcard" id="rcard-adult"><div class="who" id="rname-adult">おとな</div><div class="num" id="rnum-adult"></div><div class="marks" id="rmarks-adult"></div></div>
+      </div>
+      <div class="trainmsg" id="train-msg"></div>
+      <div class="rbtns">
+        <button type="button" class="btn" id="btn-again">もういっかい</button>
+        <button type="button" class="btn" id="btn-end">おわる</button>
+      </div>
+    </div>
+    <!-- 結果画面の列車: つないだ車両を全部つなげて、横に走る -->
+    <div class="runlane" id="runlane"><div class="runtrain" id="runtrain"></div></div>
+  </section>
+
+</div>
+
+<!-- 試験用（URL に #fakevoice を付けたときだけ出る）: マイクの代わりに、聞き取れた言葉を手で入れる -->
+<div id="fakevoice" hidden>
+  <b>fakevoice</b> <span id="fv-state">まち</span>
+  <input id="fv-text" type="text" placeholder="りんご / 林檎（/ で候補を分ける）">
+  <button type="button" id="fv-hear">きこえた</button>
+  <button type="button" id="fv-silent">きこえない</button>
+  <select id="fv-err">
+    <option value="not-allowed">not-allowed</option>
+    <option value="network">network</option>
+    <option value="audio-capture">audio-capture</option>
+    <option value="no-speech">no-speech（きこえない）</option>
+  </select>
+  <button type="button" id="fv-error">エラー</button>
+</div>
+
+<!-- モジュールは使わず、昔ながらの <script src> で順に読む（file:// で開くため）。名前空間は window.SR -->
+<script src="build/words.js"></script>
+<script src="src/config.js"></script>
+<script src="src/settings.js"></script>
+<script src="src/kana.js"></script>
+<script src="src/reading.js"></script>
+<script src="src/dict.js"></script>
+<script src="src/speech.js"></script>
+<script src="src/voice.js"></script>
+<script src="src/sfx.js"></script>
+<script src="src/bgm.js"></script>
+<script src="src/cat.js"></script>
+<script src="src/train.js"></script>
+<script src="src/wakelock.js"></script>
+<script src="src/ui.js"></script>
+<script src="src/game.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>

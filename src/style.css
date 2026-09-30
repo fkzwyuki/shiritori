@@ -1,0 +1,646 @@
+/* style.css — 見た目。mock.html の色・形に合わせている。
+   画面は基準 1024x768 の「ステージ」を JS（ui.js）で拡大・縮小して置く。
+   ステージは container-type:inline-size。中の長さは --u（= ステージの幅の1%）の倍数で書く。
+   横向きは幅 1024px なので 1u = 10.24px。縦向き（.portrait）は幅 768px にして --u を 1.3333 倍にし、
+   横向きと同じ 10.24px にそろえる（縦でも文字や絵が小さくならない）。
+   ※ --u は cqw を含むので、#stage 自身の中では使えない（子孫の中でだけ使う）。 */
+:root {
+  --sky: #e9f3fb; --paper: #ffffff; --ink: #2b3140; --muted: #6b7280; --line: #e2ddd0;
+  --kid: #ffcf3f; --kid-ink: #5a4200; --adult: #7fb6e8; --adult-ink: #173d66;
+  --kid-deep: #e0a100; --adult-deep: #4a8ccc;         /* 番の人の板のふち・点数の枠 */
+  --kid-bg: #fff3c4; --adult-bg: #d9eafb;             /* 番の人の色の、画面全体の地の色（うすい黄／うすい青） */
+  --star: #f2b322; --heart: #f2607a; --ok: #3aa76d; --warn: #e5883a;
+  --btn: #ffffff; --btn-ink: #2b3140; --mic: #ff8a5b;
+  --shadow: 0 2px 0 rgba(43, 49, 64, .18);
+  /* 丸ゴシック系。外部フォントは読み込まず、端末にあるものを順に探す */
+  --font: "Hiragino Maru Gothic ProN", "ヒラギノ丸ゴ ProN", "Zen Maru Gothic", "M PLUS Rounded 1c",
+          "Rounded Mplus 1c", "BIZ UDPGothic", "Yu Gothic", "游ゴシック", "Meiryo", "Noto Sans JP",
+          "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%; overflow: hidden;
+  background: var(--sky); color: var(--ink); font-family: var(--font);
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;       /* ダブルタップで拡大されないように */
+  overscroll-behavior: none;
+}
+[hidden] { display: none !important; }
+/* 画面全体の地の色は固定（v0.6.1。番ごとに変わるのは「ころころ変わって微妙」とのことでやめた）。
+   だれの番かは、上の名前の板（番の人の板が大きく色つき）で見せる。
+   ui.js の setTurnTheme は html に turn-kid / turn-adult を付けるが、地の色には使わない */
+
+/* ---- ステージ（1024x768 固定。拡大縮小は transform で） ---- */
+#stage {
+  position: absolute; left: 0; top: 0;
+  width: 1024px; height: 768px;
+  transform-origin: 0 0;
+  container-type: inline-size;
+  --u: 1cqw;
+  --wordw: 72;               /* 「なんて いった？」で長い言葉を収める幅（u）。縦向きでは狭くする */
+  background: var(--sky); overflow: hidden;
+  font-size: 20px; line-height: 1.3;
+}
+/* 縦向き: ui.js が幅 768px・高さ 1024〜（画面の縦横比しだい）にして、この class を付ける */
+#stage.portrait { --u: 1.3333cqw; --wordw: 54; }
+.screen { position: absolute; inset: 0; display: grid; }
+
+/* ---- ボタンの共通（<button> の見た目をならす） ---- */
+button {
+  font: inherit; color: inherit; border: 0; margin: 0; cursor: pointer;
+  background: none; padding: 0;
+}
+button:focus-visible { outline: calc(.6 * var(--u)) solid var(--kid); outline-offset: calc(.3 * var(--u)); }
+
+/* ---- スタート画面 ---- */
+.center { place-items: center; text-align: center; }
+.center .in { display: flex; flex-direction: column; align-items: center; gap: calc(2.4 * var(--u)); width: 80%; }
+.title { font-size: calc(12 * var(--u)); font-weight: 900; line-height: 1.1; }
+.sub { font-size: calc(2.6 * var(--u)); color: var(--muted); font-weight: 700; }
+.bigbtn {
+  background: var(--mic); color: #fff; border-radius: 999px; padding: calc(2 * var(--u)) calc(9 * var(--u));
+  font-size: calc(5 * var(--u)); font-weight: 900; box-shadow: 0 calc(.6 * var(--u)) 0 rgba(0, 0, 0, .2);
+}
+.bigbtn:active { transform: translateY(calc(.3 * var(--u))); box-shadow: 0 calc(.3 * var(--u)) 0 rgba(0, 0, 0, .2); }
+.names { display: flex; gap: calc(2.6 * var(--u)); justify-content: center; }
+.nameb { display: flex; flex-direction: column; align-items: center; gap: calc(.6 * var(--u)); }
+.nameb .lab { font-size: calc(2.1 * var(--u)); font-weight: 900; color: var(--muted); }
+.nameb input {
+  width: calc(28 * var(--u)); font: inherit; font-size: calc(4 * var(--u)); font-weight: 900; text-align: center; color: var(--ink);
+  padding: calc(.8 * var(--u)) calc(1 * var(--u)); border-radius: calc(2 * var(--u)); background: var(--paper);
+  border: calc(.5 * var(--u)) solid var(--line); outline: 0; box-shadow: var(--shadow);
+  -webkit-user-select: text; user-select: text;      /* 名前は打てるように（ほかの所は選択できない） */
+}
+.nameb input::placeholder { color: #c2c5cc; }
+.nameb.kid input { border-color: var(--kid-deep); }
+.nameb.adult input { border-color: var(--adult-deep); }
+.nameb input:focus { box-shadow: 0 0 0 calc(.6 * var(--u)) rgba(255, 138, 91, .45); }
+.credit { position: absolute; left: 0; right: 0; bottom: calc(1.6 * var(--u)); text-align: center; font-size: calc(1.7 * var(--u)); color: var(--muted); font-weight: 700; opacity: .8; }
+.settings { display: flex; gap: calc(1.6 * var(--u)); flex-wrap: wrap; justify-content: center; margin-top: calc(2 * var(--u)); }
+.settings button {
+  background: var(--paper); color: var(--muted); border-radius: calc(1.4 * var(--u)); box-shadow: var(--shadow);
+  padding: calc(1 * var(--u)) calc(2 * var(--u)); font-size: calc(2.1 * var(--u)); font-weight: 700;   /* 小さめだが、指で押せる大きさ */
+}
+.settings-note { font-size: calc(1.6 * var(--u)); color: var(--muted); font-weight: 700; margin-top: calc(-.6 * var(--u)); }
+
+/* ---- ゲーム画面 ---- */
+.game {
+  grid-template-columns: 1fr calc(16 * var(--u)); grid-template-rows: auto auto 1fr auto auto;
+  gap: calc(1.1 * var(--u)); padding: calc(1.4 * var(--u)) calc(2 * var(--u));   /* れっしゃの場所をあけるため、すきまをつめてある */
+}
+/* 上: 2人の名前の板。番の人の板が大きく濃い色。点数は板の下の外がわ（こども＝左、おとな＝右）に別の枠で出す */
+.players {
+  grid-column: 1 / 3; grid-row: 1; position: relative;
+  display: flex; justify-content: space-between; align-items: flex-start; gap: calc(2 * var(--u));
+  --nb: 6.4; --nc: 50;      /* 番の人の名前の字の大きさ（u）と、板に収める幅（u。長い名前は字が小さくなる） */
+  --ns: 3.4; --nsc: 28;     /* 番でない人の名前 */
+}
+.scoring .players { z-index: 11; }     /* 正解の演出のあいだは、演出の上に出す（星が飛んでいく先が見えるように） */
+.pl { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: calc(.8 * var(--u)); transition: flex-grow .4s ease; }
+.pl.active { flex-grow: 1.6; }
+.pl.kid { align-items: flex-start; }
+.pl.adult { align-items: flex-end; }
+.board {
+  width: 100%; text-align: center; white-space: nowrap; overflow: hidden;
+  background: var(--paper); color: var(--muted); border: calc(.3 * var(--u)) solid var(--line); border-radius: calc(2.4 * var(--u));
+  padding: calc(.7 * var(--u)) calc(1.5 * var(--u));
+  transition: background-color .35s ease, color .35s ease, padding .35s ease;
+}
+.board .nm { display: block; font-weight: 900; line-height: 1.15; font-size: calc(min(var(--ns), var(--nsc) / var(--nl, 4)) * var(--u)); }
+.pl.active .board { padding: calc(1 * var(--u)) calc(2 * var(--u)); box-shadow: var(--shadow); border-width: calc(.5 * var(--u)); }
+.pl.active .board .nm { font-size: calc(min(var(--nb), var(--nc) / var(--nl, 4)) * var(--u)); }
+.pl.kid.active .board { background: var(--kid); color: var(--kid-ink); border-color: var(--kid-deep); }
+.pl.adult.active .board { background: var(--adult); color: var(--adult-ink); border-color: var(--adult-deep); }
+.pl.swap .board { animation: boardpop .55s ease-out; }
+@keyframes boardpop { 0% { transform: scale(.85); } 55% { transform: scale(1.06); } 100% { transform: scale(1); } }
+.prow { width: 100%; display: flex; align-items: center; gap: calc(1.6 * var(--u)); }
+.pl.kid .prow { justify-content: flex-start; }
+.pl.adult .prow { justify-content: flex-end; }
+/* 点数（正解の回数）: 名前とは別の枠。大きな数字。★♥は数字のそばに小さく */
+.pscore {
+  display: flex; align-items: baseline; gap: calc(1 * var(--u)); background: var(--paper); box-shadow: var(--shadow);
+  border: calc(.4 * var(--u)) solid var(--line); border-radius: calc(2 * var(--u)); padding: calc(.2 * var(--u)) calc(1.6 * var(--u));
+}
+.pl.kid .pscore { border-color: var(--kid-deep); }
+.pl.adult .pscore { border-color: var(--adult-deep); }
+.pscore .n { font-size: calc(4.4 * var(--u)); font-weight: 900; line-height: 1.15; font-variant-numeric: tabular-nums; min-width: calc(2.4 * var(--u)); text-align: center; }
+.pl.active .pscore .n { font-size: calc(6 * var(--u)); }
+.pscore .marks { font-size: calc(1.9 * var(--u)); letter-spacing: calc(.1 * var(--u)); white-space: nowrap; }
+.marks .h { color: var(--heart); }
+.marks .s { color: var(--star); }
+.marks .e { color: var(--line); }
+/* 「の ばん！」の印（番の人の板の下） */
+.tag {
+  display: none; position: relative; white-space: nowrap; font-weight: 900; font-size: calc(3.4 * var(--u));
+  border-radius: 999px; padding: calc(.5 * var(--u)) calc(2 * var(--u)); box-shadow: var(--shadow);
+}
+.tag::before { content: ""; position: absolute; top: calc(-1 * var(--u)); left: 50%; margin-left: calc(-.9 * var(--u)); border: calc(.9 * var(--u)) solid transparent; border-top: 0; border-bottom-color: inherit; }
+.pl.active .tag { display: block; animation: tagbob .9s ease-in-out infinite alternate; }
+.pl.kid .tag { background: var(--kid); color: var(--kid-ink); border-bottom-color: var(--kid); }
+.pl.adult .tag { background: var(--adult); color: var(--adult-ink); border-bottom-color: var(--adult); }
+@keyframes tagbob { from { transform: translateY(0); } to { transform: translateY(calc(-.5 * var(--u))); } }
+
+.prev { grid-column: 1; grid-row: 2; display: flex; align-items: center; justify-content: center; gap: calc(2 * var(--u)); }
+.prev .lbl { font-size: calc(1.8 * var(--u)); color: var(--muted); font-weight: 700; white-space: nowrap; }
+.prev .w { font-size: calc(3.4 * var(--u)); font-weight: 700; white-space: nowrap; }   /* 長い言葉でも途中で改行しない */
+.prev .arrow { font-size: calc(3 * var(--u)); color: var(--muted); }
+.prev .head {
+  font-weight: 900; line-height: 1; background: var(--paper);
+  border: calc(.5 * var(--u)) solid var(--ink); border-radius: calc(2 * var(--u)); padding: calc(.6 * var(--u)) calc(2 * var(--u)); box-shadow: var(--shadow);
+  display: flex; align-items: baseline; gap: calc(.6 * var(--u));
+}
+.prev .head .h1 { font-size: calc(7.4 * var(--u)); }
+.prev .head .h2 { font-size: calc(3.4 * var(--u)); color: var(--muted); white-space: nowrap; }   /* もう1つの認める文字を小さく添える */
+
+.hints { grid-column: 1; grid-row: 3; display: flex; justify-content: center; gap: calc(3 * var(--u)); align-items: center; }
+/* ヒントのカード（DESIGN §6.3-3）: 裏は「？」の模様、表は絵と読み。くるっとめくれる（CSS の 3D 回転。秒数は config の CARD_FLIP_SEC） */
+.hcard {
+  position: relative; width: calc(22 * var(--u)); height: calc(23.5 * var(--u)); perspective: calc(90 * var(--u)); cursor: pointer;
+  border-radius: calc(2.5 * var(--u)); outline: calc(.6 * var(--u)) solid transparent; outline-offset: calc(.3 * var(--u));
+  transition: outline-color .15s ease calc(var(--flip, .4s) * .8);      /* めくり終わるころに、答えられる印の枠が出る */
+}
+.hcard.appear { animation: hintin .35s ease-out; }
+.hcard.tap { outline-color: var(--kid); }
+.hcard .inner {
+  position: absolute; inset: 0; transform-style: preserve-3d; -webkit-transform-style: preserve-3d;
+  transition: transform var(--flip, .4s) cubic-bezier(.35, .1, .3, 1);
+}
+.hcard.flipped .inner { transform: rotateY(180deg); }
+.hcard:active .inner { filter: brightness(.96); }
+.hcard.swap .front { animation: cardswap .4s ease-out; }
+@keyframes cardswap { 0% { transform: rotateY(180deg) scale(.85); opacity: .3; } 60% { transform: rotateY(180deg) scale(1.05); opacity: 1; } 100% { transform: rotateY(180deg) scale(1); } }
+.hcard .face {
+  position: absolute; inset: 0; border-radius: calc(2.5 * var(--u)); backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(1 * var(--u)); padding: calc(1.2 * var(--u)); text-align: center;
+}
+.hcard .back {
+  border: calc(.5 * var(--u)) solid var(--mic); color: var(--mic);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 138, 91, .22) 0 calc(.7 * var(--u)), transparent calc(.8 * var(--u))) 0 0 / calc(3 * var(--u)) calc(3 * var(--u)),
+    linear-gradient(160deg, #fff6ec, #ffe6d2);
+  box-shadow: var(--shadow);
+}
+.hcard .back::before {      /* ふちの内側の飾りの枠 */
+  content: ""; position: absolute; inset: calc(1 * var(--u)); border: calc(.3 * var(--u)) dashed rgba(255, 138, 91, .55); border-radius: calc(1.8 * var(--u)); pointer-events: none;
+}
+.hcard .back .qmark { font-size: calc(11 * var(--u)); font-weight: 900; line-height: 1; color: var(--mic); text-shadow: 0 calc(.4 * var(--u)) 0 rgba(0, 0, 0, .1); }
+.hcard .back .cap { position: relative; font-size: calc(1.9 * var(--u)); font-weight: 900; color: var(--muted); white-space: pre-line; min-height: calc(5 * var(--u)); }
+.hcard.dead { opacity: .55; }
+.hcard.dead .back { filter: grayscale(.8); }
+.hcard .front { background: var(--paper); box-shadow: var(--shadow); transform: rotateY(180deg); }
+.hcard .pic { font-size: calc(11 * var(--u)); line-height: 1.1; height: calc(13 * var(--u)); display: grid; place-items: center; }
+.hcard .pic img { max-width: 100%; max-height: calc(13 * var(--u)); object-fit: contain; }
+.hcard .pic .ph { font-size: calc(10 * var(--u)); font-weight: 900; color: var(--mic); }   /* 絵がない言葉の仮の絵「？」 */
+.hcard .yomi { font-size: calc(3 * var(--u)); font-weight: 900; }
+@keyframes hintin { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+/* おとなの番の「ヒントなし」の表示 */
+.hint.empty {
+  width: calc(22 * var(--u)); height: calc(24 * var(--u)); background: transparent; border: calc(.4 * var(--u)) dashed var(--line); border-radius: calc(2.5 * var(--u));
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(1 * var(--u)); padding: calc(1.2 * var(--u)); text-align: center;
+  color: var(--muted); font-size: calc(1.8 * var(--u)); font-weight: 700;
+}
+.hint.empty .pic { font-size: calc(5 * var(--u)); line-height: 1.1; height: calc(8 * var(--u)); display: grid; place-items: center; opacity: .5; }
+.hint.empty .yomi { font-size: calc(1.9 * var(--u)); color: var(--muted); white-space: pre-line; font-weight: 700; }
+
+.side { grid-column: 2; grid-row: 2 / 4; display: flex; flex-direction: column; gap: calc(1.5 * var(--u)); }
+.btn {
+  background: var(--btn); color: var(--btn-ink); border-radius: calc(2 * var(--u)); padding: calc(1.6 * var(--u)) 0;
+  text-align: center; font-weight: 900; font-size: calc(2.4 * var(--u)); box-shadow: var(--shadow);
+}
+.btn:active { transform: translateY(calc(.2 * var(--u))); box-shadow: none; }
+.btn.glow { outline: calc(.6 * var(--u)) solid var(--kid); outline-offset: calc(.3 * var(--u)); }
+/* ねこが「ひんと おしてみる？」と言ったとき、ひんとボタンをとくに目立たせる */
+.btn.nudge { outline: calc(.9 * var(--u)) solid var(--mic); outline-offset: calc(.3 * var(--u)); animation: nudge .7s ease-in-out infinite alternate; }
+@keyframes nudge { from { transform: scale(1); background: var(--btn); } to { transform: scale(1.09); background: #fff3c4; } }
+.btn.stop { margin-top: auto; color: var(--heart); }
+.btn.speak { font-size: calc(2 * var(--u)); }
+.btn.speak.mute { color: var(--muted); }      /* よみあげ なし のときは控えめに */
+.btn.off, .mic.off { background: #e4e4e4; color: #a0a0a0; box-shadow: none; outline: 0; cursor: default; }   /* 押せない（灰色） */
+
+.typebtn {
+  justify-self: end; background: var(--btn); color: var(--btn-ink); border-radius: 999px; padding: calc(1.4 * var(--u)) calc(2.6 * var(--u));
+  font-size: calc(2.2 * var(--u)); font-weight: 900; box-shadow: var(--shadow); border: calc(.3 * var(--u)) solid var(--line);
+}
+.mic-row { grid-column: 1 / 3; grid-row: 4; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: calc(2 * var(--u)); }
+.mic {
+  background: var(--mic); color: #fff; border-radius: 999px; padding: calc(1.6 * var(--u)) calc(5 * var(--u));
+  font-size: calc(2.8 * var(--u)); font-weight: 900; box-shadow: 0 calc(.5 * var(--u)) 0 rgba(0, 0, 0, .2); justify-self: center;
+}
+/* 正解の演出の絵（辞書にある言葉だけ） */
+.ovpic { height: calc(15 * var(--u)); font-size: calc(12 * var(--u)); line-height: calc(15 * var(--u)); text-align: center; animation: ovpicpop .5s ease-out; }
+.ovpic img { height: 100%; width: auto; }
+@keyframes ovpicpop { 0% { transform: scale(.3); opacity: 0; } 70% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
+.judge { display: flex; gap: calc(1.5 * var(--u)); justify-content: flex-end; }
+.jbtn {
+  height: calc(7 * var(--u)); padding: 0 calc(2 * var(--u)); border-radius: calc(2 * var(--u)); display: flex; align-items: center; gap: calc(1.2 * var(--u));
+  font-weight: 900; box-shadow: var(--shadow); background: var(--btn);
+}
+.jbtn.ok { color: var(--ok); border: calc(.5 * var(--u)) solid var(--ok); }
+.jmark { font-size: calc(4.5 * var(--u)); line-height: 1; }
+.jlabel { font-size: calc(1.6 * var(--u)); line-height: 1.3; text-align: left; }
+/* ---- しりとり れっしゃ（DESIGN §6.3-1）: 画面の下。左に機関車、正解のたびに車両が右からつながる。部品の大きさは em（= 1u）で書く ---- */
+.train {
+  grid-column: 1 / 3; grid-row: 5; position: relative; height: calc(9.6 * var(--u)); display: flex; align-items: flex-end; overflow: hidden;
+  font-size: calc(1 * var(--u)); line-height: 1;
+}
+.train::after {             /* 線路 */
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: .5em; border-radius: .25em;
+  background: repeating-linear-gradient(90deg, #9b8a70 0 .45em, transparent .45em 1.5em) bottom / 100% .5em no-repeat, linear-gradient(#7b6c58, #7b6c58) 0 .12em / 100% .16em no-repeat;
+  opacity: .8; z-index: 0;
+}
+.scoring .train, .scoring .cat { z-index: 11; }       /* 正解の演出のあいだは、演出の上に出す（車両がつながるのが見えるように） */
+.train.blend, .runlane.blend { mix-blend-mode: multiply; }   /* 白い背景の絵を、地の色になじませる（演出の上に出すときも効くよう、列車ぜんたいに掛ける） */
+.t-engine { flex: none; width: 12.5em; height: 100%; position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: center; padding-bottom: .3em; }
+.engine { font-size: 7.2em; line-height: 1; }
+.engine.art { font-size: 1em; height: 8.8em; width: 100%; }
+.engine.art img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 58%; display: block; }
+.engine.flip img { transform: scaleX(-1); }
+/* 古い車両は、機関車のうしろへ流れて消える（左のふちを薄くする） */
+.t-view { flex: 1; height: 100%; position: relative; overflow: hidden; z-index: 1; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 2.4em); mask-image: linear-gradient(90deg, transparent 0, #000 2.4em); }
+.t-cars { position: absolute; left: 0; bottom: 0; height: 100%; display: flex; align-items: flex-end; transition: transform var(--scroll, .5s) ease; --carw: 14em; }
+/* 車両: 上に乗せた絵（cargo）、下に車体（body）。車体には言葉の文字を小さく添える */
+.car {
+  flex: none; width: var(--carw); height: 100%; padding: 0 .5em .5em; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; position: relative;
+}
+.car .cargo { flex: none; height: 1.3em; width: 100%; display: flex; align-items: flex-end; justify-content: center; font-size: 3.2em; line-height: 1; position: relative; z-index: 1; }   /* 乗せる絵（この行の em は cargo 自身の字の大きさ） */
+.car .cargo img { height: 100%; width: auto; max-width: 100%; object-fit: contain; }
+.car .body {
+  position: relative; width: 100%; height: 3.6em; display: flex; align-items: center; justify-content: center;
+  border-radius: .7em .7em .5em .5em; background: var(--cc, #ef6a5b); box-shadow: inset 0 -.4em 0 rgba(0, 0, 0, .14);
+}
+.car .body .w {
+  position: relative; z-index: 1; max-width: 94%; white-space: nowrap; font-weight: 900; color: #fff; text-align: center;
+  font-size: min(2em, calc((var(--carw) - 1.6em) / var(--nl, 4)));    /* 長い言葉は文字が小さくなって、車体に収まる */
+}
+.car.plain .body::before {   /* 連結器 */
+  content: ""; position: absolute; left: -1em; bottom: 1em; width: 1em; height: .5em; background: #55504a; border-radius: .2em;
+}
+.car.plain .body::after {    /* 車輪 */
+  content: ""; position: absolute; left: 0; right: 0; bottom: -.7em; height: 1.6em; pointer-events: none;
+  background: radial-gradient(circle at 24% 50%, #3a3f4c 0 .7em, transparent .75em), radial-gradient(circle at 76% 50%, #3a3f4c 0 .7em, transparent .75em);
+}
+.car.nopic .cargo { display: none; }
+.car.nopic .body { height: 4.6em; }
+.car.nopic .body .w { font-size: min(2.5em, calc((var(--carw) - 1.6em) / var(--nl, 4))); }
+/* 車両の絵（images/_train_car.png）があるとき: 絵（正方形）の、車両がある真ん中の横長の帯だけを出す。文字は車体の赤に白ぶち */
+.car.art { padding-bottom: .2em; padding-left: .2em; padding-right: .2em; }
+.car.art .body { height: calc((var(--carw) - .4em) * .5); margin-top: -2.2em; background: none; box-shadow: none; border-radius: 0; }
+.car.art .body img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; display: block; }
+.car.art .body .w { color: #fff; text-shadow: 0 .08em 0 #7a1c12, 0 0 .2em #7a1c12, 0 0 .2em #7a1c12; margin-top: 1.2em; font-size: min(1.9em, calc((var(--carw) - 3.6em) / var(--nl, 4))); }
+.car.art.nopic .body { margin-top: 0; }
+.car.art.nopic .body .w { margin-top: .9em; font-size: min(2.3em, calc((var(--carw) - 3.6em) / var(--nl, 4))); }
+.car.new { animation: carin .55s cubic-bezier(.2, 1.2, .4, 1) both; }
+@keyframes carin { 0% { transform: translateX(40em); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateX(0); opacity: 1; } }
+
+/* ---- 案内役のねこ（DESIGN §6.3-2）: 絵が無いときは 🐱（ポーズごとに小さな印）。ポーズは cat.js が data-pose で切り替え、変わるときに弾む ---- */
+.cat {
+  position: absolute; z-index: 11; left: calc(1.2 * var(--u)); bottom: calc(10.6 * var(--u)); width: calc(15 * var(--u)); height: calc(15 * var(--u));   /* 横向き: ヒントの枠の左の空き（れっしゃの上） */
+  display: flex; align-items: center; justify-content: center; pointer-events: none; transform-origin: 50% 100%;
+}
+.cat .emo { font-size: calc(10 * var(--u)); line-height: 1; }
+.cat .badge { position: absolute; right: calc(.4 * var(--u)); top: calc(.6 * var(--u)); font-size: calc(3.6 * var(--u)); line-height: 1; animation: badgebob .8s ease-in-out infinite alternate; }
+.cat img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.cat.art { mix-blend-mode: multiply; }      /* 白い背景の絵を、地の色になじませる */
+.cat.bounce { animation: catbounce var(--bounce, .5s) cubic-bezier(.3, 1.5, .5, 1); }
+@keyframes catbounce { 0% { transform: translateY(0) scale(1, 1); } 25% { transform: translateY(calc(-2.4 * var(--u))) scale(.94, 1.08); } 55% { transform: translateY(0) scale(1.1, .88); } 80% { transform: translateY(calc(-.6 * var(--u))) scale(.99, 1.02); } 100% { transform: translateY(0) scale(1, 1); } }
+@keyframes badgebob { from { transform: translateY(0) rotate(-8deg); } to { transform: translateY(calc(-.8 * var(--u))) rotate(8deg); } }
+
+/* ---- 「ん」のおばけ（DESIGN §6.3-4）: 下から出る → 変な顔 → 手をふって消える。全体で config の MISS_N_OVERLAY_SEC ---- */
+.ghost { position: absolute; left: 0; right: 0; bottom: 0; height: calc(34 * var(--u)); pointer-events: none; overflow: hidden; z-index: 11; }
+.ghost .gh { position: absolute; left: 50%; bottom: 0; width: calc(28 * var(--u)); height: calc(28 * var(--u)); margin-left: calc(-14 * var(--u)); display: flex; align-items: flex-end; justify-content: center; font-size: calc(20 * var(--u)); line-height: 1; transform-origin: 50% 100%; }
+.ghost .gh img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.ghost.art { mix-blend-mode: multiply; }      /* 白い背景の絵を、地の色になじませる（.ghost 自身が z-index を持つので、ぜんたいに掛ける） */
+.ghost .gh .wave { position: absolute; right: calc(1 * var(--u)); top: calc(3 * var(--u)); font-size: calc(9 * var(--u)); transform-origin: 70% 80%; animation: gwave .35s ease-in-out infinite alternate; }
+.ghost .gh.in { animation: ghin var(--gdur, 2.4s) linear both; }
+.ghost .gh.out { animation: ghout var(--gdur, 2.4s) linear both; opacity: 0; }
+/* 出てくる（0〜22%）→ 変な顔でゆれる（〜58%）→ 入れ替わる */
+@keyframes ghin {
+  0% { transform: translateY(110%) scale(.8); opacity: 1; animation-timing-function: cubic-bezier(.2, 1.4, .4, 1); }
+  22% { transform: translateY(0) scale(1.05, .95); }
+  30% { transform: translateY(0) rotate(-7deg) scale(1.1, .9); }
+  38% { transform: translateY(-3%) rotate(7deg) scale(.94, 1.1); }
+  46% { transform: translateY(0) rotate(-7deg) scale(1.1, .9); }
+  54% { transform: translateY(-3%) rotate(5deg) scale(1, 1); opacity: 1; }
+  57% { transform: translateY(0) rotate(0) scale(1); opacity: 1; }
+  58% { opacity: 0; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(0) scale(1); }
+}
+/* 手をふって消える（58%〜）。さいごは上へふわっと */
+@keyframes ghout {
+  0%, 57% { opacity: 0; transform: translateY(0) rotate(0); }
+  58% { opacity: 1; transform: translateY(0) rotate(0); }
+  68% { transform: translateY(0) rotate(-6deg); }
+  78% { transform: translateY(-2%) rotate(6deg); opacity: 1; }
+  88% { transform: translateY(-14%) rotate(-4deg) scale(.96); opacity: .9; }
+  100% { transform: translateY(-40%) rotate(0) scale(.85); opacity: 0; }
+}
+@keyframes gwave { from { transform: rotate(-22deg); } to { transform: rotate(22deg); } }
+#ov-miss.with-ghost .ov-in { transform: translateY(calc(-4 * var(--u))); }   /* おばけが出るぶん、文字を少し上に（縦向きは高さに余裕があるので上げない） */
+.portrait #ov-miss.with-ghost .ov-in { transform: none; }
+
+/* ---- 結果画面の列車: つないだ車両を全部つなげて、横に走り抜ける（走る速さは TRAIN_RUN_SPEED） ---- */
+.trainmsg { font-size: calc(4 * var(--u)); font-weight: 900; color: var(--ink); }
+#screen-result { padding-bottom: calc(15 * var(--u)); }     /* 列車の走る場所をあける */
+.runlane { position: absolute; left: 0; right: 0; bottom: calc(1 * var(--u)); height: calc(13.5 * var(--u)); overflow: hidden; z-index: 0; pointer-events: none; }
+.runlane::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: .6em; background: #9b8a70; opacity: .5; border-radius: .3em; font-size: calc(1.4 * var(--u)); }
+.runtrain { position: absolute; left: 0; bottom: 0; height: 100%; display: flex; align-items: flex-end; font-size: calc(1.4 * var(--u)); line-height: 1; --carw: calc(13 * var(--u)); will-change: transform; transform: translateX(100cqw); }
+.runtrain > .engine { flex: none; width: 12.5em; height: 100%; display: flex; align-items: flex-end; justify-content: center; padding-bottom: .3em; font-size: 7.2em; animation: carrock .3s ease-in-out infinite alternate; }
+.runtrain > .engine.art { font-size: 1em; }
+.runtrain .car { height: 100%; animation: carrock .34s ease-in-out infinite alternate; }
+.runtrain .car:nth-child(even) { animation-delay: .17s; }
+@keyframes carrock { from { transform: translateY(0); } to { transform: translateY(-.25em); } }
+
+.pscore.pop { animation: scorepop .6s ease-out; }
+@keyframes scorepop { 0% { transform: scale(1); } 30% { transform: scale(1.3); } 60% { transform: scale(.96); } 100% { transform: scale(1); } }
+
+/* ---- 上にかぶせる表示（正解・やり直し・五十音表・確認・お知らせ） ---- */
+.overlay {
+  position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+  background: rgba(255, 255, 255, .78); z-index: 10;
+}
+.overlay.heart { background: rgba(255, 244, 214, .9); }
+.ov-in { display: flex; flex-direction: column; align-items: center; gap: calc(1.5 * var(--u)); position: relative; z-index: 1; }
+.ov-in .big { font-size: calc(9 * var(--u)); font-weight: 900; color: var(--ok); line-height: 1; animation: bigpop .5s ease-out; }
+.ov-in .word { font-size: calc(8 * var(--u)); font-weight: 900; letter-spacing: calc(.8 * var(--u)); }
+.ov-in .plus { font-size: calc(4 * var(--u)); font-weight: 900; color: var(--star); }
+.ov-in .heartline { font-size: calc(5.5 * var(--u)); font-weight: 900; color: var(--heart); animation: heartbeat .5s ease-in-out infinite alternate; }
+.ov-in.heart .big { font-size: calc(11 * var(--u)); color: var(--heart); }
+.ov-in.warn .big { font-size: calc(4.8 * var(--u)); color: var(--warn); animation: none; }
+.ov-in.warn .word { font-size: calc(3.2 * var(--u)); color: var(--muted); letter-spacing: calc(.2 * var(--u)); }
+@keyframes bigpop { 0% { transform: scale(.3); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes heartbeat { from { transform: scale(1); } to { transform: scale(1.15); } }
+
+/* 正解の演出（Phase 3）: 言葉が1文字ずつ弾んで出る */
+.ov-in .word .ch { display: inline-block; animation: charhop .7s cubic-bezier(.3, 1.4, .5, 1) both; transform-origin: 50% 100%; }
+@keyframes charhop {
+  0% { transform: translateY(1.3em) scale(.3); opacity: 0; }
+  38% { transform: translateY(-.6em) scale(1.12, .96); opacity: 1; }
+  58% { transform: translateY(0) scale(1.22, .8); }
+  78% { transform: translateY(-.2em) scale(.96, 1.08); }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+/* 紙吹雪: 画面の下からはじけて、ひらひら落ちる（向きと高さは JS が決める） */
+.bp { position: absolute; line-height: 1; will-change: transform; animation: burst 1.5s cubic-bezier(.12, .8, .3, 1) both; }
+.bp.paper { border-radius: calc(.2 * var(--u)); }
+@keyframes burst {
+  0% { transform: translate(-50%, 0) rotate(0) scale(.3); opacity: 1; animation-timing-function: cubic-bezier(.1, .8, .3, 1); }
+  42% { transform: translate(calc(-50% + var(--dx)), var(--dy)) rotate(calc(var(--rot) * .55)) scale(1); opacity: 1; animation-timing-function: cubic-bezier(.45, 0, .85, .6); }
+  100% { transform: translate(calc(-50% + var(--dx) * 1.2), var(--fall)) rotate(var(--rot)) scale(1); opacity: 0; }
+}
+/* 星が点数の枠へ飛んでいく層 */
+.fly { position: absolute; inset: 0; z-index: 13; pointer-events: none; overflow: hidden; }
+.fstar {
+  position: absolute; line-height: 1; opacity: 0; transform: translate(-50%, -50%) scale(1.5);
+  transition-property: transform, opacity; transition-timing-function: cubic-bezier(.5, .05, .75, .95);
+  filter: drop-shadow(0 calc(.3 * var(--u)) calc(.4 * var(--u)) rgba(0, 0, 0, .25));
+}
+
+/* 花・星（結果画面）。位置と大きさは JS がばらつかせる */
+.confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.deco { position: absolute; line-height: 1; animation: decopop .5s ease-out both, decosway 1.4s ease-in-out infinite alternate; }
+@keyframes decopop { from { transform: scale(0) rotate(-40deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+@keyframes decosway { from { margin-top: 0; } to { margin-top: calc(-1.6 * var(--u)); } }
+
+.toast {
+  position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); z-index: 8;
+  background: var(--ink); color: #fff; border-radius: 999px; padding: calc(1.2 * var(--u)) calc(3.5 * var(--u));
+  font-size: calc(3 * var(--u)); font-weight: 900; box-shadow: var(--shadow); pointer-events: none;
+}
+
+/* 言葉を全部打つキーボード（DESIGN §6.2-10）。横向きは 75u の高さに収める */
+.kana-ov { background: rgba(255, 255, 255, .95); z-index: 12; }
+.kana-ov .ov-in { gap: calc(1.2 * var(--u)); width: calc(78 * var(--u)); }
+.kana-ov .ask { font-size: calc(3.8 * var(--u)); font-weight: 900; white-space: nowrap; }
+/* 打った言葉の欄。長い言葉は --nl（文字数）から字を小さくして欄に収める */
+.kana-word {
+  position: relative; width: 100%; height: calc(11 * var(--u)); display: flex; align-items: center; justify-content: center;
+  background: var(--paper); border: calc(.4 * var(--u)) solid var(--mic); border-radius: calc(1.6 * var(--u)); box-shadow: var(--shadow);
+  overflow: hidden; white-space: nowrap; --nl: 1;
+}
+.kana-word .kw-text { font-size: calc(min(8, 64 / var(--nl)) * var(--u)); font-weight: 900; letter-spacing: calc(.3 * var(--u)); line-height: 1.1; }
+.kana-word .kw-caret {
+  display: inline-block; width: calc(.6 * var(--u)); height: calc(6 * var(--u)); margin-left: calc(.6 * var(--u));
+  background: var(--mic); border-radius: 999px; animation: kwblink 1s steps(1) infinite;
+}
+.kana-word .kw-ph { display: none; font-size: calc(3.6 * var(--u)); font-weight: 900; color: #b9bdc6; }
+.kana-word.empty .kw-ph { display: block; }
+.kana-word.empty .kw-caret { display: none; }
+.kana-word.full { animation: kwshake .3s; }
+@keyframes kwblink { 50% { opacity: 0; } }
+@keyframes kwshake { 25% { transform: translateX(calc(-1 * var(--u))); } 75% { transform: translateX(var(--u)); } }
+.kana { display: grid; grid-template-columns: repeat(10, 1fr); gap: calc(.8 * var(--u)); width: 100%; }
+.kcell {
+  background: var(--paper); border-radius: calc(1.2 * var(--u)); text-align: center; font-size: calc(3.8 * var(--u)); font-weight: 900;
+  height: calc(6.8 * var(--u)); box-shadow: var(--shadow); border: calc(.2 * var(--u)) solid var(--line);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
+}
+.kcell:active { background: var(--kid); color: var(--kid-ink); }
+.kcell.blank { background: transparent; box-shadow: none; border-color: transparent; }
+.kcell.marked { border-color: var(--mic); color: var(--mic); }
+.kana-extra { display: grid; grid-template-columns: repeat(8, 1fr); gap: calc(.8 * var(--u)); width: 100%; }
+.kana-extra .kcell { height: calc(6.4 * var(--u)); }
+.kana-extra .fn b { font-size: calc(4.6 * var(--u)); line-height: .8; }
+.kana-extra .fn small { font-size: calc(1.5 * var(--u)); font-weight: 900; line-height: 1; }
+.kana-extra .fn.on { background: var(--mic); color: #fff; border-color: var(--mic); }
+.kana-extra .del { font-size: calc(2.8 * var(--u)); background: #fde8e0; border-color: var(--mic); color: #a8431c; }
+.kana-tools { display: flex; gap: calc(2 * var(--u)); margin-top: calc(.5 * var(--u)); }
+.kana-tools .tool {
+  background: var(--paper); border-radius: calc(1.6 * var(--u)); padding: calc(1 * var(--u)) calc(3 * var(--u)); font-size: calc(2.6 * var(--u)); font-weight: 900;
+  box-shadow: var(--shadow); border: calc(.3 * var(--u)) solid var(--line);
+}
+.kana-tools .tool.on { background: var(--mic); color: #fff; border-color: var(--mic); }
+.kana-tools .tool.back { background: var(--kid); color: var(--kid-ink); border-color: var(--kid); margin-left: calc(4 * var(--u)); }
+.kana-ov .kana-tools { width: 100%; margin-top: calc(.3 * var(--u)); }
+.kana-ov .kana-tools .tool { height: calc(7.2 * var(--u)); padding: 0; font-size: calc(3.2 * var(--u)); }
+.kana-ov .kana-tools .tool.back { margin-left: 0; flex: 0 0 calc(20 * var(--u)); }
+.kana-ov .kana-tools .tool.go { flex: 1; background: var(--ok); color: #fff; border-color: var(--ok); font-size: calc(3.8 * var(--u)); }
+.kana-ov .kana-tools .tool.go:disabled { background: #e3e5ea; color: #a4a9b3; border-color: #e3e5ea; box-shadow: none; cursor: default; }
+
+/* 「なんて いった？」 */
+.listen-ov { background: rgba(255, 255, 255, .95); z-index: 12; }
+.listen-ov .ov-in { gap: calc(2 * var(--u)); width: calc(90 * var(--u)); }
+.listen-ov .ask { font-size: calc(5 * var(--u)); font-weight: 900; }
+.listen-mid { width: 100%; min-height: calc(15 * var(--u)); display: grid; place-items: center; }
+.listen-ov .mic {
+  font-size: calc(4 * var(--u)); padding: calc(2 * var(--u)) calc(6 * var(--u)); position: relative; justify-self: center;
+}
+.listen-ov .mic:disabled { cursor: default; }
+.listen-ov .mic.listening::after {
+  content: ""; position: absolute; inset: calc(-1 * var(--u)); border-radius: 999px;
+  border: calc(.5 * var(--u)) solid var(--mic); opacity: .6; animation: micpulse 1.2s infinite;
+}
+.listen-ov .mic.listening { animation: micwave 1.2s ease-in-out infinite alternate; }   /* 「きいてるよ」と波打つ */
+.listen-ov .mic.glow { outline: calc(.6 * var(--u)) solid var(--kid); outline-offset: calc(.5 * var(--u)); }         /* 聞き取れなかったので、もう一度押してほしい */
+@keyframes micpulse { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(1.18); opacity: 0; } }
+@keyframes micwave { from { transform: scale(1); } to { transform: scale(1.06); } }
+.heard { min-height: calc(4.6 * var(--u)); font-size: calc(3.6 * var(--u)); font-weight: 900; color: var(--mic); letter-spacing: calc(.3 * var(--u)); }   /* 「きこえた: …」（途中の文字） */
+.listen-msg { min-height: calc(3.6 * var(--u)); font-size: calc(3 * var(--u)); font-weight: 900; color: var(--warn); }
+/* 声の候補（最大3つ）。親が押して選ぶ。いちばん上の候補は緑 */
+.cands { display: flex; gap: calc(2.4 * var(--u)); justify-content: center; width: 100%; }
+.cand {
+  flex: 1 1 0; min-width: 0; max-width: calc(34 * var(--u)); background: var(--paper); color: var(--ink);
+  border: calc(.4 * var(--u)) solid var(--line); border-radius: calc(2.4 * var(--u)); padding: calc(2.2 * var(--u)) calc(1 * var(--u));
+  box-shadow: var(--shadow); font-weight: 900; white-space: nowrap; line-height: 1.2;
+  font-size: calc(min(6.4, 24 / var(--nl, 4)) * var(--u));      /* 長い言葉は字が小さくなって、ボタンの中に収まる */
+  animation: hintin .3s ease-out;
+}
+.cand.first { background: var(--ok); color: #fff; border-color: var(--ok); }
+.cand:active { transform: scale(.96); }
+.listen-ov .btn.none { padding: calc(1.4 * var(--u)) calc(5 * var(--u)); font-size: calc(3.2 * var(--u)); border: calc(.3 * var(--u)) solid var(--line); }
+
+/* 試験用（#fakevoice）の入力欄。ふだんは hidden。ステージの外（画面の一番下）に固定で出す */
+#fakevoice {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 9999; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  padding: 4px 8px; background: rgba(43, 49, 64, .92); color: #fff; font: 12px/1.3 sans-serif;
+}
+#fakevoice.live { background: rgba(229, 136, 58, .95); }
+#fakevoice input { flex: 1; min-width: 120px; -webkit-user-select: text; user-select: text; font-size: 12px; padding: 2px 4px; }
+#fakevoice button, #fakevoice select { font-size: 12px; padding: 2px 8px; background: #fff; color: #222; border-radius: 4px; }
+
+/* 声の記録欄（URL に #voicelog を付けたときだけ出る。実機で声の不具合を調べる用）。画面の右上のすみ、押しても何も起きない */
+#voicelog {
+  position: fixed; top: 0; right: 0; z-index: 9998; margin: 0; max-width: 34vw; max-height: 40vh; overflow: hidden;
+  padding: 4px 6px; background: rgba(0, 0, 0, .72); color: #7dff9b; font: 10px/1.35 monospace; white-space: pre-wrap; pointer-events: none;
+}
+
+/* やめる確認 */
+.confirm { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, .35); z-index: 14; }
+.confirm .box {
+  background: var(--paper); border-radius: calc(2.5 * var(--u)); padding: calc(3 * var(--u)) calc(4 * var(--u));
+  display: flex; flex-direction: column; gap: calc(2 * var(--u)); align-items: center; box-shadow: var(--shadow);
+}
+.confirm .q { font-size: calc(3.6 * var(--u)); font-weight: 900; }
+.confirm .row { display: flex; gap: calc(2 * var(--u)); }
+.confirm .btn { padding: calc(1.4 * var(--u)) calc(3.5 * var(--u)); font-size: calc(2.8 * var(--u)); border: calc(.3 * var(--u)) solid var(--line); }
+.confirm .btn.no { background: var(--kid); color: var(--kid-ink); border-color: var(--kid); }
+
+/* ---- 結果画面 ---- */
+#screen-result .confetti { z-index: 0; }
+#screen-result .in { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: calc(2.4 * var(--u)); width: 80%; }
+.winner {
+  font-size: calc(6.5 * var(--u)); font-weight: 900; padding: calc(.8 * var(--u)) calc(5 * var(--u)); border-radius: 999px; background: var(--paper); box-shadow: var(--shadow);
+}
+.winner.kid { background: var(--kid); color: var(--kid-ink); }
+.winner.adult { background: var(--adult); color: var(--adult-ink); }
+.result { display: grid; grid-template-columns: 1fr 1fr; gap: calc(3 * var(--u)); width: 80%; }
+.rcard {
+  background: var(--paper); border-radius: calc(2.5 * var(--u)); padding: calc(2 * var(--u)); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; align-items: center; gap: calc(.6 * var(--u));
+}
+.rcard .who { font-size: calc(2.8 * var(--u)); font-weight: 900; }
+.rcard .marks { font-size: calc(3 * var(--u)); letter-spacing: calc(.2 * var(--u)); min-height: calc(4 * var(--u)); }
+.rcard .num { font-size: calc(9 * var(--u)); line-height: 1.1; font-weight: 900; font-variant-numeric: tabular-nums; }
+.rcard.win { outline: calc(.6 * var(--u)) solid var(--kid); outline-offset: calc(.3 * var(--u)); }
+.rbtns { display: flex; gap: calc(2 * var(--u)); }
+.rbtns .btn { padding: calc(1.4 * var(--u)) calc(4 * var(--u)); font-size: calc(2.8 * var(--u)); }
+
+/* ---- 縦向き（#stage.portrait。幅 768px、1u = 10.24px。DESIGN.md §3 の基準は 768x1024） ----
+   横向きの部品をそのまま使い、並べ方だけ上下に組み替える。
+   上: 星の欄と手番 → まえのことば・今の文字 → 中: ヒントの絵2枚 → ヒント／かえる／やめる → ほかの ことば・○ → これまで */
+.portrait .game {
+  grid-template-columns: 1fr; grid-template-rows: auto auto 1fr auto auto auto;
+  gap: calc(2.2 * var(--u)); padding: calc(2.4 * var(--u));
+}
+.portrait .players, .portrait .prev, .portrait .hints, .portrait .side, .portrait .mic-row, .portrait .train {
+  grid-column: 1; grid-row: auto;
+}
+.portrait .players { --nb: 6; --nc: 27; --ns: 3.3; --nsc: 21; gap: calc(1.8 * var(--u)); }
+.portrait .tag { font-size: calc(3.2 * var(--u)); padding: calc(.5 * var(--u)) calc(1.6 * var(--u)); }
+.portrait .pscore .n { font-size: calc(4.6 * var(--u)); }
+.portrait .pl.active .pscore .n { font-size: calc(6.4 * var(--u)); }
+.portrait .pscore .marks { font-size: calc(2.1 * var(--u)); }
+.portrait .prow { gap: calc(1.2 * var(--u)); }
+.portrait .prev { flex-wrap: wrap; gap: calc(1 * var(--u)) calc(2 * var(--u)); }
+.portrait .prev .lbl { font-size: calc(2 * var(--u)); }
+.portrait .prev .w { font-size: calc(4 * var(--u)); }
+.portrait .prev .head .h1 { font-size: calc(10 * var(--u)); }
+.portrait .prev .head .h2 { font-size: calc(4 * var(--u)); }
+.portrait .hints { gap: calc(3 * var(--u)); }
+.portrait .hcard { width: calc(31 * var(--u)); height: calc(29 * var(--u)); }
+.portrait .hcard .back .qmark { font-size: calc(12.5 * var(--u)); }
+.portrait .hcard .back .cap { font-size: calc(2.5 * var(--u)); }
+.portrait .hcard .pic { font-size: calc(13 * var(--u)); height: calc(15 * var(--u)); }
+.portrait .hcard .pic img { max-height: calc(15 * var(--u)); }
+.portrait .hcard .pic .ph { font-size: calc(13 * var(--u)); }
+.portrait .hcard .yomi { font-size: calc(3.8 * var(--u)); }
+.portrait .hint.empty { width: calc(31 * var(--u)); height: calc(28 * var(--u)); }
+.portrait .hint.empty .pic { font-size: calc(6 * var(--u)); height: calc(8 * var(--u)); }
+.portrait .hint.empty .yomi { font-size: calc(2.3 * var(--u)); }
+.portrait .side { flex-direction: row; gap: calc(2 * var(--u)); }
+.portrait .side .btn { flex: 1; padding: calc(2.2 * var(--u)) 0; font-size: calc(3 * var(--u)); }
+.portrait .btn.stop { margin-top: 0; }
+.portrait .side .btn.speak { font-size: calc(2.3 * var(--u)); white-space: nowrap; }   /* 4つ並ぶので「よみあげ なし」が割れないよう小さめに */
+.portrait .mic { font-size: calc(3.2 * var(--u)); padding: calc(2 * var(--u)) calc(4 * var(--u)); }
+.portrait .typebtn { font-size: calc(2.4 * var(--u)); padding: calc(1.7 * var(--u)) calc(1.4 * var(--u)); white-space: nowrap; justify-self: stretch; }
+.portrait .mic-row { grid-template-columns: 1fr 1fr; gap: calc(1.8 * var(--u)); }        /* 縦向き: ほかの ことば と にゅうりょく する を半分ずつ（折り返さないように） */
+.portrait .mic-row > div { display: none; }
+.portrait .mic-row .mic { justify-self: stretch; padding-left: calc(1 * var(--u)); padding-right: calc(1 * var(--u)); white-space: nowrap; }
+.portrait .cat { left: calc(1.4 * var(--u)); top: calc(23.6 * var(--u)); bottom: auto; width: calc(13 * var(--u)); height: calc(13 * var(--u)); }   /* 縦向き: 上のほう、「まえのことば」の左の空き */
+.portrait .ovpic { height: calc(18 * var(--u)); font-size: calc(14 * var(--u)); line-height: calc(18 * var(--u)); }
+.portrait .jbtn { height: calc(8.5 * var(--u)); }
+.portrait .jmark { font-size: calc(5 * var(--u)); }
+.portrait .jlabel { font-size: calc(1.9 * var(--u)); }
+
+/* 縦向き: 上にかぶせる表示 */
+.portrait .ov-in { max-width: calc(72 * var(--u)); }
+.portrait .ov-in .big { font-size: calc(10 * var(--u)); }
+.portrait .ov-in .word { font-size: calc(7 * var(--u)); letter-spacing: calc(.4 * var(--u)); }
+.portrait .ov-in .plus { font-size: calc(4.4 * var(--u)); }
+.portrait .ov-in .heartline { font-size: calc(4.6 * var(--u)); }
+.portrait .ov-in.heart .big { font-size: calc(10 * var(--u)); }
+.portrait .ov-in.warn .big { font-size: calc(5.2 * var(--u)); }
+.portrait .ov-in.warn .word { font-size: calc(3.6 * var(--u)); }
+.portrait .toast { font-size: calc(3.2 * var(--u)); }
+.portrait .kana-ov .ov-in { width: calc(71 * var(--u)); gap: calc(1.6 * var(--u)); max-width: none; }
+.portrait .kana-ov .ask { font-size: calc(4 * var(--u)); }
+.portrait .kana-word { height: calc(14 * var(--u)); }
+.portrait .kana-word .kw-text { font-size: calc(min(9.5, 60 / var(--nl)) * var(--u)); }
+.portrait .kana-word .kw-caret { height: calc(8 * var(--u)); }
+.portrait .kana-word .kw-ph { font-size: calc(4.2 * var(--u)); }
+.portrait .kana { gap: calc(1 * var(--u)); }
+.portrait .kcell { font-size: calc(4.6 * var(--u)); height: calc(9 * var(--u)); }
+.portrait .kana-extra { gap: calc(1 * var(--u)); }
+.portrait .kana-extra .kcell { height: calc(9 * var(--u)); }
+.portrait .kana-extra .fn b { font-size: calc(5.4 * var(--u)); }
+.portrait .kana-extra .fn small { font-size: calc(1.8 * var(--u)); }
+.portrait .kana-extra .del { font-size: calc(3.2 * var(--u)); }
+.portrait .kana-tools { gap: calc(1.6 * var(--u)); margin-top: calc(1 * var(--u)); }
+.portrait .kana-tools .tool { padding: calc(1.4 * var(--u)) calc(2.2 * var(--u)); font-size: calc(2.8 * var(--u)); }
+.portrait .kana-ov .kana-tools .tool { height: calc(9.5 * var(--u)); padding: 0; font-size: calc(3.6 * var(--u)); }
+.portrait .kana-ov .kana-tools .tool.go { font-size: calc(4.2 * var(--u)); }
+.portrait .kana-ov .kana-tools .tool.back { flex-basis: calc(22 * var(--u)); }
+.portrait .listen-ov .ov-in { width: calc(72 * var(--u)); gap: calc(2.6 * var(--u)); }
+.portrait .listen-ov .ask { font-size: calc(5.6 * var(--u)); }
+.portrait .listen-mid { min-height: calc(20 * var(--u)); }
+.portrait .cands { flex-direction: column; align-items: center; gap: calc(1.8 * var(--u)); }
+.portrait .cand { flex: none; width: 100%; max-width: none; padding: calc(2 * var(--u)) calc(1 * var(--u)); font-size: calc(min(7.4, 56 / var(--nl, 4)) * var(--u)); }
+.portrait .heard { font-size: calc(4 * var(--u)); }
+.portrait .listen-msg { font-size: calc(3.2 * var(--u)); }
+.portrait .listen-ov .btn.none { padding: calc(1.6 * var(--u)) calc(5 * var(--u)); font-size: calc(3.4 * var(--u)); }
+.portrait .confirm .q { font-size: calc(4 * var(--u)); }
+.portrait .confirm .btn { font-size: calc(3.2 * var(--u)); }
+
+/* 縦向き: スタート画面・結果画面 */
+.portrait .center .in { width: 90%; gap: calc(3.4 * var(--u)); }
+.portrait .title { font-size: calc(14 * var(--u)); }
+.portrait .sub { font-size: calc(3.2 * var(--u)); }
+.portrait .bigbtn { font-size: calc(6 * var(--u)); padding: calc(2.4 * var(--u)) calc(10 * var(--u)); }
+.portrait .settings { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; gap: calc(1.4 * var(--u)); }   /* ボタンが4つになったので、縦に積まず2列に */
+.portrait .settings button { font-size: calc(2.8 * var(--u)); padding: calc(1.4 * var(--u)) calc(3 * var(--u)); }
+.portrait .settings-note { font-size: calc(2 * var(--u)); }
+.portrait .nameb .lab { font-size: calc(2.3 * var(--u)); }
+.portrait .nameb input { width: calc(30 * var(--u)); font-size: calc(4 * var(--u)); }
+.portrait .credit { font-size: calc(2 * var(--u)); bottom: calc(2 * var(--u)); }
+.portrait .winner { font-size: calc(6 * var(--u)); padding: calc(.8 * var(--u)) calc(3.5 * var(--u)); white-space: nowrap; }
+.portrait .result { width: 100%; gap: calc(2.4 * var(--u)); }
+.portrait .rcard .who { font-size: calc(3.2 * var(--u)); }
+.portrait .rcard .marks { font-size: calc(3.6 * var(--u)); }
+.portrait .rcard .num { font-size: calc(10 * var(--u)); }
+.portrait .rbtns .btn { font-size: calc(3.2 * var(--u)); padding: calc(1.8 * var(--u)) calc(4 * var(--u)); }
+
+/* ---- 動きを減らしたい端末 ---- */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
